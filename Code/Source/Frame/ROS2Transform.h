@@ -12,6 +12,8 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 
+#include <geometry_msgs/msg/transform_stamped.h>
+
 namespace ROS2
 {
    /// Publishes transforms as standard ros2 tf2 messages. Static transforms are published once.
