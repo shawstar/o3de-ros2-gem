@@ -8,7 +8,6 @@
 
 #include "Frame/ROS2FrameComponent.h"
 #include "Sensor/ROS2SensorComponent.h"
-#include "Frame/ROS2FrameComponent.h"
 #include "ROS2/ROS2Bus.h"
 #include "Utilities/ROS2Names.h"
 
@@ -16,8 +15,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Serialization/EditContextConstants.inl>
 
 namespace ROS2
 {

@@ -26,7 +26,6 @@ namespace ROS2
             request->m_start = start;
             request->m_direction = direction;
             request->m_distance = distance;
-
             request->m_reportMultipleHits = false;
             requests.emplace_back(AZStd::move(request));
         }
