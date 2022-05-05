@@ -51,8 +51,12 @@ ly_add_target(
     INCLUDE_DIRECTORIES
         PUBLIC
             Include
+        PRIVATE
+            Source
+    BUILD_DEPENDENCIES
+        PRIVATE
+            Gem::ROS2.Static
             Gem::Atom_Feature_Common.Static
-            Gem::Atom_Component_DebugCamera.Static
 )
 
 # By default, we will specify that the above target ROS2 would be used by
@@ -77,13 +81,9 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
             PUBLIC
                 Include
         BUILD_DEPENDENCIES
-            PRIVATE
-                AZ::AzGameFramework
-                Gem::Atom_AtomBridge.Static
             PUBLIC
                 AZ::AzToolsFramework
                 Gem::ROS2.Static
-                Gem::Atom_RPI.Edit
     )
 
     ly_add_target(
