@@ -21,6 +21,8 @@ namespace ROS2
         : public ROS2SensorComponent
     {
     public:
+        ROS2CameraSensorComponent();
+        ~ROS2CameraSensorComponent() = default;
         AZ_COMPONENT(ROS2CameraSensorComponent, "{3C6B8AE6-9721-4639-B8F9-D8D28FD7A071}", ROS2SensorComponent);
         static void Reflect(AZ::ReflectContext* context);
 
