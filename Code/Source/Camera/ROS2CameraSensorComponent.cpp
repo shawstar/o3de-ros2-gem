@@ -23,10 +23,10 @@ namespace ROS2
     }
 
     ROS2CameraSensorComponent::ROS2CameraSensorComponent() {
-        auto pc = AZStd::make_shared<PublisherConfiguration>();
+        PublisherConfiguration pc;
         auto type = Internal::kImageMessageType;
-        pc->m_type = type;
-        pc->m_topic = "camera_image";
+        pc.m_type = type;
+        pc.m_topic = "camera_image";
         m_sensorConfiguration.m_frequency = 10;
 
         m_sensorConfiguration.m_publishersConfigurations.insert(AZStd::make_pair(type, pc));
@@ -56,9 +56,9 @@ namespace ROS2
         auto ros2Node = ROS2Interface::Get()->GetNode();
         AZ_Assert(m_sensorConfiguration.m_publishersConfigurations.size() == 1, "Invalid configuration of publishers for lidar sensor");
         const auto publisherConfig = m_sensorConfiguration.m_publishersConfigurations[Internal::kImageMessageType];
-        AZStd::string fullTopic = ROS2Names::GetNamespacedName(GetNamespace(), publisherConfig->m_topic);
+        AZStd::string fullTopic = ROS2Names::GetNamespacedName(GetNamespace(), publisherConfig.m_topic);
 
-        m_imagePublisher = ros2Node->create_publisher<sensor_msgs::msg::Image>(fullTopic.data(), publisherConfig->GetQoS());
+        m_imagePublisher = ros2Node->create_publisher<sensor_msgs::msg::Image>(fullTopic.data(), publisherConfig.GetQoS());
     }
 
     void ROS2CameraSensorComponent::Deactivate()
