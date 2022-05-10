@@ -14,6 +14,9 @@
 #include "RobotControl/ControlConfiguration.h"
 #include "RobotControl/RobotConfiguration.h"
 #include "Frame/ROS2FrameComponent.h"
+#include <AzCore/Component/Entity.h>
+
+#include "QoS/QoS.h"
 
 namespace ROS2
 {
