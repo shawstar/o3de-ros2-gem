@@ -28,6 +28,8 @@ ly_add_target(
             AZ::AzCore
             AZ::AzFramework
             Gem::Atom_RPI.Public
+            Gem::Atom_Feature_Common.Static
+            Gem::Atom_Component_DebugCamera.Static
 )
 
 target_depends_on_ros2_packages(ROS2.Static rclcpp builtin_interfaces std_msgs sensor_msgs urdfdom tf2_ros)

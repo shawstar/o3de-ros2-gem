@@ -15,7 +15,9 @@
 #include <AzCore/Debug/Trace.h>
 
 #include "RobotControl/ROS2RobotControlComponent.h"
-#include "RobotControl/TwistControl/TwistControl.h"
+#include "RobotControl/TwistControl.h"
+#include "Utilities/ROS2Names.h"
+#include "Frame/ROS2FrameComponent.h"
 
 namespace ROS2
 {

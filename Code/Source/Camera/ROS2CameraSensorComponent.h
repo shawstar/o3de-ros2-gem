@@ -15,6 +15,8 @@
 #include <AzCore/Component/Component.h>
 #include <Atom/Feature/Utils/FrameCaptureBus.h>
 
+#include <AzFramework/Entity/EntityContext.h>
+
 namespace ROS2
 {
     class ROS2CameraSensorComponent
@@ -31,12 +33,31 @@ namespace ROS2
 
     private:
 
+        bool SupportsMultipleWindows() {
+            return true;
+        }
+
+        void InitializeSecondPipeline();
+        void OpenSecondSceneWindow();
+        void DrawOnSecondWindow();
+
         void FrequencyTick() override;
+
 
         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> m_imagePublisher;
         AZStd::string m_cameraName = "dummy";
         void ReadbackCallback(const AZ::RPI::AttachmentReadback::ReadbackResult& result);
 
         void UpdateCamera();
+
+        void DrawAuxGeom() const;
+
+        AZ::RPI::RenderPipelinePtr m_pipeline;
+        AZ::Entity* m_cameraEntity = nullptr;
+
+        AZStd::unique_ptr<AzFramework::EntityContext> m_entityContext;
+        AZStd::unique_ptr<class WindowedView> m_windowedView;
+
+        AZ::RPI::Scene* m_scene = nullptr;
     };
 }  // namespace ROS2
