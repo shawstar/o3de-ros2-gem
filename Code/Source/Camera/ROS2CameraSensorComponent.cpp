@@ -35,111 +35,12 @@
 #include <AzFramework/Scene/SceneSystemInterface.h>
 
 #include <Atom/RPI.Public/AuxGeom/AuxGeomFeatureProcessorInterface.h>
+#include <Atom/RPI.Public/Pass/Specific/RenderToTexturePass.h>
 
+#include <PostProcess/PostProcessFeatureProcessor.h>
 
 namespace ROS2
 {
-
-    //! A simple example for how to set up a second window, view, renderPipeline, and basic entities.
-    class WindowedView final
-            : public AzFramework::WindowNotificationBus::Handler
-    {
-        friend ROS2CameraSensorComponent;
-    protected:
-        AZStd::unique_ptr<AzFramework::NativeWindow> m_nativeWindow;
-        AZStd::shared_ptr<AZ::RPI::WindowContext> m_windowContext;
-        AZ::RPI::RenderPipelinePtr m_pipeline;
-        AZ::Entity* m_cameraEntity = nullptr;
-        AZ::RPI::ViewPtr m_view;
-        ROS2CameraSensorComponent* m_parent;
-
-    public:
-        WindowedView(AzFramework::EntityContextId contextId, ROS2CameraSensorComponent *parent)
-                : m_parent(parent)
-        {
-            m_parent = parent;
-
-            // Create a NativeWindow and WindowContext
-            m_nativeWindow = AZStd::make_unique<AzFramework::NativeWindow>("Multi View Single Scene: Second Window", AzFramework::WindowGeometry(0, 0, 640, 480));
-            m_nativeWindow->Activate();
-            AZ::RHI::Ptr<AZ::RHI::Device> device = AZ::RHI::RHISystemInterface::Get()->GetDevice();
-            m_windowContext = AZStd::make_shared<AZ::RPI::WindowContext>();
-            m_windowContext->Initialize(*device, m_nativeWindow->GetWindowHandle());
-
-            AZ::RPI::PassSystemInterface::Get()->DebugPrintPassHierarchy();
-
-            AZ::RPI::Scene* scene = AZ::RPI::RPISystemInterface::Get()->GetSceneByName(AZ::Name("Main"));
-            const AZStd::vector<AZStd::shared_ptr<AZ::RPI::RenderPipeline>>& renderingPipelines = scene->GetRenderPipelines();
-            AZ_TracePrintf(">>>>>>>>>>>", "Pipelne size: %u", renderingPipelines.size());
-//            for (const auto& pipeline : renderingPipelines) {
-//                AZ_TracePrintf(">>>>>>>>>>>", "Pipelne size: %u", pipeline->);
-//            }
-
-            // Create a custom pipeline descriptor
-            AZ::RPI::RenderPipelineDescriptor pipelineDesc;
-            pipelineDesc.m_mainViewTagName = "MainCamera";          //Surface shaders render to the "MainCamera" tag
-            pipelineDesc.m_name = "SecondPipeline";                 //Sets the debug name for this pipeline
-            pipelineDesc.m_rootPassTemplate = "MainPipeline";    //References a template in AtomSampleViewer\Passes\PassTemplates.azasset
-            pipelineDesc.m_renderSettings.m_multisampleState.m_samples = 4;
-            m_pipeline = AZ::RPI::RenderPipeline::CreateRenderPipelineForWindow(pipelineDesc, *m_windowContext);
-
-            AZ_TracePrintf(">>>>>>>>>>>", "New pipelne %p", m_pipeline.get());
-
-            scene->AddRenderPipeline(m_pipeline);
-
-            const AZStd::vector<AZStd::shared_ptr<AZ::RPI::RenderPipeline>>& renderingPipelines2 = scene->GetRenderPipelines();
-            AZ_TracePrintf(">>>>>>>>>>>", "Pipelne size: %u", renderingPipelines2.size());
-
-            AZ::RPI::PassSystemInterface::Get()->DebugPrintPassHierarchy();
-
-            // Create a camera entity, hook it up to the RenderPipeline
-            m_cameraEntity = AtomSampleViewer::CreateEntity("WindowedViewCamera", contextId);
-            AZ::Debug::CameraComponentConfig cameraConfig(m_windowContext);
-            cameraConfig.m_fovY = AZ::Constants::QuarterPi;
-            AZ::Debug::CameraComponent* camComponent = static_cast<AZ::Debug::CameraComponent*>(m_cameraEntity->CreateComponent(azrtti_typeid<AZ::Debug::CameraComponent>()));
-            camComponent->SetConfiguration(cameraConfig);
-            m_cameraEntity->CreateComponent(azrtti_typeid<AzFramework::TransformComponent>());
-            m_cameraEntity->CreateComponent(azrtti_typeid<AZ::Debug::NoClipControllerComponent>());
-            m_cameraEntity->Activate();
-            m_pipeline->SetDefaultViewFromEntity(m_cameraEntity->GetId());
-            m_view = camComponent->GetView();
-
-            AzFramework::WindowNotificationBus::Handler::BusConnect(m_nativeWindow->GetWindowHandle());
-        }
-
-        ~WindowedView()
-        {
-            AzFramework::WindowNotificationBus::Handler::BusDisconnect(m_nativeWindow->GetWindowHandle());
-
-            AtomSampleViewer::DestroyEntity(m_cameraEntity);
-
-            m_pipeline->RemoveFromScene();
-            m_pipeline = nullptr;
-
-            m_windowContext->Shutdown();
-            m_windowContext = nullptr;
-        }
-
-        // AzFramework::WindowNotificationBus::Handler overrides ...
-        void OnWindowClosed() override
-        {
-            // TODO: !!! USE THAT ASAP !!!
-//            m_parent->OnChildWindowClosed();
-        }
-
-        AzFramework::NativeWindowHandle GetNativeWindowHandle()
-        {
-            if (m_nativeWindow)
-            {
-                return m_nativeWindow->GetWindowHandle();
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
-    };
-
     namespace Internal
     {
         const char* kImageMessageType = "sensor_msgs::msg::Image";
@@ -156,7 +57,7 @@ namespace ROS2
     }
     void ROS2CameraSensorComponent::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
+        auto* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
             serialize->Class<ROS2CameraSensorComponent, ROS2SensorComponent>()
@@ -174,21 +75,29 @@ namespace ROS2
     }
 
     void ROS2CameraSensorComponent::InitializeSecondPipeline() {
+        m_scene = AZ::RPI::RPISystemInterface::Get()->GetSceneByName(AZ::Name("Main"));
+
         AZ::RPI::PassSystemInterface::Get()->DebugPrintPassHierarchy();
 
         const AZStd::vector<AZStd::shared_ptr<AZ::RPI::RenderPipeline>>& renderingPipelines = m_scene->GetRenderPipelines();
         AZ_TracePrintf(">>>>>>>>>>>", "Pipelne size: %u", renderingPipelines.size());
 
+        AZStd::string pipelineName = "SecondPipeline";
 
         AZ::RPI::RenderPipelineDescriptor pipelineDesc;
         pipelineDesc.m_mainViewTagName = "MainCamera";          //Surface shaders render to the "MainCamera" tag
-        pipelineDesc.m_name = "SecondPipeline";                 //Sets the debug name for this pipeline
+        pipelineDesc.m_name = pipelineName;                 //Sets the debug name for this pipeline
         pipelineDesc.m_rootPassTemplate = "MainPipelineRenderToTexture";    //References a template in AtomSampleViewer\Passes\PassTemplates.azasset
         pipelineDesc.m_renderSettings.m_multisampleState.m_samples = 4;
         m_pipeline = AZ::RPI::RenderPipeline::CreateRenderPipeline(pipelineDesc);
 
+        int width = 640;
+        int height = 480;
 
-        AZ_TracePrintf(">>>>>>>>>>>", "New pipelne %p", m_pipeline.get());
+        if (auto renderToTexturePass = azrtti_cast<AZ::RPI::RenderToTexturePass*>(m_pipeline->GetRootPass().get()))
+        {
+            renderToTexturePass->ResizeOutput(width, height);
+        }
 
         m_scene->AddRenderPipeline(m_pipeline);
 
@@ -197,25 +106,43 @@ namespace ROS2
 
         AZ::RPI::PassSystemInterface::Get()->DebugPrintPassHierarchy();
 
-
         AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
         AzFramework::EntityIdContextQueryBus::EventResult(contextId, GetEntityId(), &AzFramework::EntityIdContextQueries::GetOwningContextId);
 
         AZ_TracePrintf(">>>>>>>>>>>", "osm Context id: %s\n", contextId.ToString<AZStd::string>().c_str());
 
+        // rendering pipeline has a tree structure
+        m_passHierarchy.push_back(pipelineName);
+        m_passHierarchy.push_back("CopyToSwapChain");
 
-//        m_cameraEntity = AtomSampleViewer::CreateEntity("WindowedViewCamera", contextId);
-//        AZ::Debug::CameraComponentConfig cameraConfig(m_windowContext);
-//        cameraConfig.m_fovY = AZ::Constants::QuarterPi;
-//        AZ::Debug::CameraComponent* camComponent = static_cast<AZ::Debug::CameraComponent*>(m_cameraEntity->CreateComponent(azrtti_typeid<AZ::Debug::CameraComponent>()));
-//        camComponent->SetConfiguration(cameraConfig);
-//        m_cameraEntity->CreateComponent(azrtti_typeid<AzFramework::TransformComponent>());
-//        m_cameraEntity->CreateComponent(azrtti_typeid<AZ::Debug::NoClipControllerComponent>());
-//        m_cameraEntity->Activate();
-//        m_pipeline->SetDefaultViewFromEntity(m_cameraEntity->GetId());
-//        m_view = camComponent->GetView();
-//
-//        AzFramework::WindowNotificationBus::Handler::BusConnect(m_nativeWindow->GetWindowHandle());
+        // retrieve View from the camera that's animating
+        AZ::Name viewName = AZ::Name("MainCamera");
+        m_view = AZ::RPI::View::CreateView(viewName, AZ::RPI::View::UsageCamera);
+
+        //!  SetWorldToViewMatrix()
+        //!  SetCameraTransform()
+        //! To have a fully formed set of view transforms you also need to call SetViewToClipMatrix() to set up the projection.
+        m_pipeline->SetDefaultView(m_view);
+        m_targetView = m_scene->GetDefaultRenderPipeline()->GetDefaultView();
+        if (auto* fp = m_scene->GetFeatureProcessor<AZ::Render::PostProcessFeatureProcessor>())
+        {
+            // This will be set again to mimic the active camera in UpdateView
+            fp->SetViewAlias(m_view, m_targetView);
+        }
+    }
+
+    void ROS2CameraSensorComponent::DestroyPipeline()
+    {
+        if (auto* fp = m_scene->GetFeatureProcessor<AZ::Render::PostProcessFeatureProcessor>())
+        {
+            // Remove view alias introduced in CreatePipeline and UpdateView
+            fp->RemoveViewAlias(m_view);
+        }
+        m_scene->RemoveRenderPipeline(m_pipeline->GetId());
+        m_passHierarchy.clear();
+        m_pipeline.reset();
+        m_view.reset();
+        m_targetView.reset();
     }
 
     void ROS2CameraSensorComponent::Activate()
@@ -228,22 +155,37 @@ namespace ROS2
 
         m_imagePublisher = ros2Node->create_publisher<sensor_msgs::msg::Image>(fullTopic.data(), publisherConfig.GetQoS());
 
-        m_scene = AZ::RPI::RPISystemInterface::Get()->GetSceneByName(AZ::Name("Main"));
-//        for (const auto& pipeline : renderingPipelines) {
-//            AZ_TracePrintf(">>>>>>>>>>>", "Pipeline name: %s", pipeline->GetRootPass())
-//        }
-        OpenSecondSceneWindow();
-//        InitializeSecondPipeline();
+        InitializeSecondPipeline();
+        m_startTime = std::chrono::steady_clock::now();
     }
 
     void ROS2CameraSensorComponent::Deactivate()
     {
+        DestroyPipeline();
         ROS2SensorComponent::Deactivate();
+    }
+
+    float ROS2CameraSensorComponent::SecondsSinceStart() {
+        return static_cast<float>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - m_startTime).count())/1000.0f;
     }
 
     void ROS2CameraSensorComponent::FrequencyTick()
     {
-        DrawOnSecondWindow();
+        AZ::Transform transform = GetEntity()->GetTransform()->GetWorldTM();//AZ::Transform::Identity();
+        AZ::Vector3 eulerAngles = AZ::ConvertTransformToEulerDegrees(transform);
+        AZ::Vector3 translation = transform.GetTranslation();
+
+        AZ_TracePrintf(">>>>>>>>>>.", "Translation: %f, %f, %f, euler: %f, %f, %f",
+                       translation.GetX(), translation.GetY(), translation.GetZ(),
+                       eulerAngles.GetX(), eulerAngles.GetY(), eulerAngles.GetZ());
+
+        AZ::Transform inverse = transform.GetInverse();
+
+        m_view->SetWorldToViewMatrix(AZ::Matrix4x4::CreateFromQuaternionAndTranslation(inverse.GetRotation(),
+                                                                                       inverse.GetTranslation()));
+
         AZ::Render::FrameCaptureRequestBus::Broadcast(
             &AZ::Render::FrameCaptureRequestBus::Events::CapturePassAttachmentWithCallback,
             AZStd::vector<AZStd::string>({"SecondPipeline", "CopyToSwapChain"}),
@@ -255,10 +197,13 @@ namespace ROS2
     void ROS2CameraSensorComponent::ReadbackCallback(const AZ::RPI::AttachmentReadback::ReadbackResult& result)
     {
         const AZ::RHI::ImageDescriptor& descriptor = result.m_imageDescriptor;
-        AZ_TracePrintf(">>>>>>>>>>>", "New image %u x %u", descriptor.m_size.m_width, descriptor.m_size.m_height);
+        AZ_TracePrintf(">>>>>>>>>>>", "New image %u x %u %s",
+                       descriptor.m_size.m_width,
+                       descriptor.m_size.m_height,
+                       AZ::RHI::ToString(descriptor.m_format));
 
         sensor_msgs::msg::Image message;
-        message.encoding = sensor_msgs::image_encodings::BGRA8;
+        message.encoding = sensor_msgs::image_encodings::RGBA8;
 
         message.width = descriptor.m_size.m_width;
         message.height = descriptor.m_size.m_height;
@@ -267,90 +212,4 @@ namespace ROS2
 
         m_imagePublisher->publish(message);
     }
-
-    void ROS2CameraSensorComponent::OpenSecondSceneWindow()
-    {
-        if (SupportsMultipleWindows() && !m_windowedView)
-        {
-            AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-            AzFramework::EntityIdContextQueryBus::EventResult(contextId, GetEntityId(), &AzFramework::EntityIdContextQueries::GetOwningContextId);
-            AZ_TracePrintf(">>>>>>>>>>>", "osm Context id: %s\n", contextId.ToString<AZStd::string>().c_str());
-
-            m_windowedView = AZStd::make_unique<WindowedView>(contextId, this);
-        }
-    }
-
-    void ROS2CameraSensorComponent::DrawOnSecondWindow() {
-        DrawAuxGeom();
-
-//        if (SupportsMultipleWindows() && ImGui::Begin("Multi View Panel"))
-//        {
-//            if(m_windowedView)
-//            {
-//                if (ImGui::Button("Close Second View Window"))
-//                {
-//                    m_windowedView = nullptr;
-//                }
-//            }
-//            else
-//            {
-//                if (ImGui::Button("Open Second View Window"))
-//                {
-//                    OpenSecondSceneWindow();
-//                }
-//            }
-//            ImGui::End();
-//        }
-
-        if (m_windowedView)
-        {
-//            float fovRadians = AZ::Constants::QuarterPi;
-//            float nearClipDistance = 0.1f;
-//            float farClipDistance = 100.0f;
-
-            AZ::EntityId secondCameraEntityId = m_windowedView->m_cameraEntity->GetId();
-            AZ::Transform transform = GetEntity()->GetTransform()->GetWorldTM();//AZ::Transform::Identity();
-            AZ::TransformBus::Event(secondCameraEntityId, &AZ::TransformBus::Events::SetWorldTM, transform);
-//            Camera::CameraComponentRequests* secondCamInterface = Camera::CameraRequestBus::FindFirstHandler(secondCameraEntityId);
-//            secondCamInterface->SetFovRadians(fovRadians);
-//            secondCamInterface->SetNearClipDistance(nearClipDistance);
-//            secondCamInterface->SetFarClipDistance(farClipDistance);
-        }
-    }
-
-    void ROS2CameraSensorComponent::DrawAuxGeom() const
-    {
-//        auto auxGeomFP = m_scene->GetFeatureProcessor<AZ::RPI::AuxGeomFeatureProcessorInterface>();
-//        if (auto auxGeom = auxGeomFP->GetDrawQueue())
-//        {
-//            DrawBackgroundBox(auxGeom);
-//
-//            DrawThreeGridsOfPoints(auxGeom);
-//
-//            DrawAxisLines(auxGeom);
-//
-//            DrawLines(auxGeom);
-//
-//            DrawBoxes(auxGeom, -20.0f);
-//
-//            Draw2DWireRect(auxGeom, AZ::Colors::Red, 1.0f);
-//        }
-//
-//        if (m_windowedView)
-//        {
-//            if (auto auxGeom = auxGeomFP->GetDrawQueueForView(m_windowedView->m_view.get()))
-//            {
-//                DrawTriangles(auxGeom);
-//
-//                DrawShapes(auxGeom);
-//
-//                DrawBoxes(auxGeom, 10.0f);
-//
-//                DrawDepthTestPrimitives(auxGeom);
-//
-//                Draw2DWireRect(auxGeom, AZ::Colors::Yellow, 0.9f);
-//            }
-//        }
-    }
-
 } // namespace ROS2
