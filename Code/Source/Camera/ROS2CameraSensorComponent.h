@@ -43,9 +43,18 @@ namespace ROS2
 
         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> m_imagePublisher;
         AZStd::string m_cameraName = "dummy";
+        float m_VerticalFieldOfViewDeg = 90.0f;
+        int m_width = 640;
+        int m_height = 480;
+
+        void OnCameraParamsChanged();
+
+        void InitializeView();
+
+
         void ReadbackCallback(const AZ::RPI::AttachmentReadback::ReadbackResult& result);
 
-        void UpdateCamera();
+        void ApplyParams();
 
         AZStd::vector<AZStd::string> m_passHierarchy;
         AZ::RPI::RenderPipelinePtr m_pipeline;
@@ -57,5 +66,10 @@ namespace ROS2
 
         std::chrono::steady_clock::time_point m_startTime;
         float SecondsSinceStart();
+
+        float m_aspectRatio = 1.0f;
+        float m_nearDist = 0.1f;
+        float m_farDist = 100.0f;
+
     };
 }  // namespace ROS2

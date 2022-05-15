@@ -11,6 +11,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Math/MatrixUtils.h>
 
 #include <sensor_msgs/image_encodings.hpp>
 #include <Utilities/ROS2Names.h>
@@ -25,8 +26,6 @@
 
 #include <Atom/RPI.Public/Base.h>
 #include <Atom/RPI.Public/WindowContext.h>
-
-#include "EntityUtilityFunctions.h"
 
 #include <Atom/Component/DebugCamera/CameraComponent.h>
 #include <Atom/Component/DebugCamera/NoClipControllerComponent.h>
@@ -46,6 +45,9 @@ namespace ROS2
         const char* kImageMessageType = "sensor_msgs::msg::Image";
     }
 
+    const char* const tracePrefix = "ROS2CameraSensor";
+
+
     ROS2CameraSensorComponent::ROS2CameraSensorComponent() {
         PublisherConfiguration pc;
         auto type = Internal::kImageMessageType;
@@ -55,6 +57,8 @@ namespace ROS2
 
         m_sensorConfiguration.m_publishersConfigurations.insert(AZStd::make_pair(type, pc));
     }
+
+
     void ROS2CameraSensorComponent::Reflect(AZ::ReflectContext* context)
     {
         auto* serialize = azrtti_cast<AZ::SerializeContext*>(context);
@@ -62,16 +66,28 @@ namespace ROS2
         {
             serialize->Class<ROS2CameraSensorComponent, ROS2SensorComponent>()
                     ->Version(1)
-                    ->Field("CameraName", &ROS2CameraSensorComponent::m_cameraName);
+                    ->Field("CameraName", &ROS2CameraSensorComponent::m_cameraName)
+                    ->Field("VerticalFieldOfViewDeg", &ROS2CameraSensorComponent::m_VerticalFieldOfViewDeg)
+                    ->Field("Width", &ROS2CameraSensorComponent::m_width)
+                    ->Field("Height", &ROS2CameraSensorComponent::m_height);
 
             AZ::EditContext* ec = serialize->GetEditContext();
             if (ec) {
                 ec->Class<ROS2CameraSensorComponent>("ROS2 Camera Sensor", "[Simple Camera component]")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &ROS2CameraSensorComponent::m_cameraName, "Camera Name", "This is the camera name.");
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ROS2CameraSensorComponent::m_cameraName, "Camera Name", "This is the camera name.")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ROS2CameraSensorComponent::m_VerticalFieldOfViewDeg, "Vertical field of view", "Camera's vertical (y axis) field of view in degrees.")
+                            ->Attribute(AZ::Edit::Attributes::AddNotify, &ROS2CameraSensorComponent::OnCameraParamsChanged)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ROS2CameraSensorComponent::m_width, "Image width", "Image width")
+                            ->Attribute(AZ::Edit::Attributes::AddNotify, &ROS2CameraSensorComponent::OnCameraParamsChanged)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ROS2CameraSensorComponent::m_height, "Image height", "Image height")
+                            ->Attribute(AZ::Edit::Attributes::AddNotify, &ROS2CameraSensorComponent::OnCameraParamsChanged);
             }
         }
+    }
+    void ROS2CameraSensorComponent::OnCameraParamsChanged() {
+        ApplyParams();
     }
 
     void ROS2CameraSensorComponent::InitializeSecondPipeline() {
@@ -80,7 +96,7 @@ namespace ROS2
         AZ::RPI::PassSystemInterface::Get()->DebugPrintPassHierarchy();
 
         const AZStd::vector<AZStd::shared_ptr<AZ::RPI::RenderPipeline>>& renderingPipelines = m_scene->GetRenderPipelines();
-        AZ_TracePrintf(">>>>>>>>>>>", "Pipelne size: %u", renderingPipelines.size());
+        AZ_TracePrintf(tracePrefix, "Pipelne size: %u", renderingPipelines.size());
 
         AZStd::string pipelineName = "SecondPipeline";
 
@@ -91,36 +107,27 @@ namespace ROS2
         pipelineDesc.m_renderSettings.m_multisampleState.m_samples = 4;
         m_pipeline = AZ::RPI::RenderPipeline::CreateRenderPipeline(pipelineDesc);
 
-        int width = 640;
-        int height = 480;
-
         if (auto renderToTexturePass = azrtti_cast<AZ::RPI::RenderToTexturePass*>(m_pipeline->GetRootPass().get()))
         {
-            renderToTexturePass->ResizeOutput(width, height);
+            renderToTexturePass->ResizeOutput(m_width, m_height);
         }
 
         m_scene->AddRenderPipeline(m_pipeline);
 
         const AZStd::vector<AZStd::shared_ptr<AZ::RPI::RenderPipeline>>& renderingPipelines2 = m_scene->GetRenderPipelines();
-        AZ_TracePrintf(">>>>>>>>>>>", "Pipelne size: %u", renderingPipelines2.size());
+        AZ_TracePrintf(tracePrefix, "Pipelne size: %u", renderingPipelines2.size());
 
         AZ::RPI::PassSystemInterface::Get()->DebugPrintPassHierarchy();
 
         AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
         AzFramework::EntityIdContextQueryBus::EventResult(contextId, GetEntityId(), &AzFramework::EntityIdContextQueries::GetOwningContextId);
 
-        AZ_TracePrintf(">>>>>>>>>>>", "osm Context id: %s\n", contextId.ToString<AZStd::string>().c_str());
+        AZ_TracePrintf(tracePrefix, "osm Context id: %s\n", contextId.ToString<AZStd::string>().c_str());
 
         // rendering pipeline has a tree structure
         m_passHierarchy.push_back(pipelineName);
         m_passHierarchy.push_back("CopyToSwapChain");
 
-        // retrieve View from the camera that's animating
-        AZ::Name viewName = AZ::Name("MainCamera");
-        m_view = AZ::RPI::View::CreateView(viewName, AZ::RPI::View::UsageCamera);
-
-        //!  SetWorldToViewMatrix()
-        //!  SetCameraTransform()
         //! To have a fully formed set of view transforms you also need to call SetViewToClipMatrix() to set up the projection.
         m_pipeline->SetDefaultView(m_view);
         m_targetView = m_scene->GetDefaultRenderPipeline()->GetDefaultView();
@@ -148,6 +155,10 @@ namespace ROS2
     void ROS2CameraSensorComponent::Activate()
     {
         ROS2SensorComponent::Activate();
+
+        InitializeView();
+        ApplyParams();
+
         auto ros2Node = ROS2Interface::Get()->GetNode();
         AZ_Assert(m_sensorConfiguration.m_publishersConfigurations.size() == 1, "Invalid configuration of publishers for lidar sensor");
         const auto publisherConfig = m_sensorConfiguration.m_publishersConfigurations[Internal::kImageMessageType];
@@ -157,6 +168,20 @@ namespace ROS2
 
         InitializeSecondPipeline();
         m_startTime = std::chrono::steady_clock::now();
+    }
+
+    void ROS2CameraSensorComponent::InitializeView() {
+        AZ::Name viewName = AZ::Name("MainCamera");
+        m_view = AZ::RPI::View::CreateView(viewName, AZ::RPI::View::UsageCamera);
+    }
+
+    void ROS2CameraSensorComponent::ApplyParams() {
+        m_aspectRatio = static_cast<float>(m_width)/static_cast<float>(m_height);
+
+        AZ_TracePrintf(tracePrefix, "New fov %f", m_VerticalFieldOfViewDeg);
+        AZ::Matrix4x4 viewToClipMatrix;
+        AZ::MakePerspectiveFovMatrixRH(viewToClipMatrix, AZ::DegToRad(m_VerticalFieldOfViewDeg), m_aspectRatio, m_nearDist, m_farDist, true);
+        m_view->SetViewToClipMatrix(viewToClipMatrix);
     }
 
     void ROS2CameraSensorComponent::Deactivate()
@@ -177,7 +202,7 @@ namespace ROS2
         AZ::Vector3 eulerAngles = AZ::ConvertTransformToEulerDegrees(transform);
         AZ::Vector3 translation = transform.GetTranslation();
 
-        AZ_TracePrintf(">>>>>>>>>>.", "Translation: %f, %f, %f, euler: %f, %f, %f",
+        AZ_TracePrintf(tracePrefix, "Translation: %f, %f, %f, euler: %f, %f, %f",
                        translation.GetX(), translation.GetY(), translation.GetZ(),
                        eulerAngles.GetX(), eulerAngles.GetY(), eulerAngles.GetZ());
 
@@ -197,7 +222,7 @@ namespace ROS2
     void ROS2CameraSensorComponent::ReadbackCallback(const AZ::RPI::AttachmentReadback::ReadbackResult& result)
     {
         const AZ::RHI::ImageDescriptor& descriptor = result.m_imageDescriptor;
-        AZ_TracePrintf(">>>>>>>>>>>", "New image %u x %u %s",
+        AZ_TracePrintf(tracePrefix, "New image %u x %u %s",
                        descriptor.m_size.m_width,
                        descriptor.m_size.m_height,
                        AZ::RHI::ToString(descriptor.m_format));

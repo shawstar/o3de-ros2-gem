@@ -6,8 +6,6 @@
 set(FILES
     Source/Camera/ROS2CameraSensorComponent.cpp
     Source/Camera/ROS2CameraSensorComponent.h
-    Source/Camera/EntityUtilityFunctions.cpp
-    Source/Camera/EntityUtilityFunctions.h
     Source/Clock/SimulationClock.cpp
     Source/Clock/SimulationClock.h
     Source/Lidar/LidarRaycaster.cpp
