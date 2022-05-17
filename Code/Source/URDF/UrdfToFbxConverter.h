@@ -10,6 +10,9 @@
 
 #include <AzCore/std/string/string.h>
 
+#include "FbxGenerator.h"
+#include "UrdfParser.h"
+
 namespace ROS2
 {
     //! Class for conversion from URDF to Filmbox (.fbx) files
@@ -17,6 +20,12 @@ namespace ROS2
     {
     public:
         AZStd::string ConvertUrdfToFbx(const AZStd::string & urdfString);
+
+    private:
+        void AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel);
+
+        Fbx::FbxGenerator m_generator;
+        std::map <std::string, Id> m_materialNamesToIds;
     };
 
 } // namespace ROS2

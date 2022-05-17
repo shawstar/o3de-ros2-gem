@@ -21,6 +21,9 @@ class UrdfToFbxConverterTest : public AllocatorsTestFixture
         {
             return
                 "<robot name=\"test_one_link\">"
+                "  <material name=\"black\">"
+                "    <color rgba=\"0.0 0.0 0.0 1.0\"/>"
+                "  </material>"
                 "  <link name=\"link1\">"
                 "    <inertial>"
                 "      <mass value=\"1.0\"/>"
@@ -40,6 +43,14 @@ class UrdfToFbxConverterTest : public AllocatorsTestFixture
                 "  </link>"
                 "</robot>";
         }
+
+    void PrintFbxContent(const std::string & str)
+    {
+        std::cout << __func__ << " fbx data:"
+            << "\n---------------\n"
+            << str
+            << "\n---------------\n";
+    }
 };
 
 TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithOneLink)
@@ -48,6 +59,7 @@ TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithOneLink)
     const auto xmlStr = GetUrdfWithOneLink();
     const auto fbxStr = converter.ConvertUrdfToFbx(xmlStr);
 
+    PrintFbxContent(fbxStr);
     // Add validation (implementation of converter is also not ready)
 }
 
