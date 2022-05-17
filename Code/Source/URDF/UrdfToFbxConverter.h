@@ -19,7 +19,9 @@ namespace ROS2
     class UrdfToFbxConverter
     {
     public:
-        AZStd::string ConvertUrdfToFbx(const AZStd::string & urdfString);
+        std::string Convert(const std::string & urdfString);
+
+        std::string ConvertAndSaveToFile(const std::string & urdfString, const std::string & filePath);
 
     private:
         void AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel);

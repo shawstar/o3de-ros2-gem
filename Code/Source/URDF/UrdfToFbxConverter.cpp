@@ -14,7 +14,7 @@
 
 namespace ROS2
 {
-    AZStd::string UrdfToFbxConverter::ConvertUrdfToFbx(const AZStd::string & urdfString)
+    std::string UrdfToFbxConverter::Convert(const std::string & urdfString)
     {
         // 1. Parse URDF
         const auto urdf = UrdfParser::Parse(urdfString);
@@ -50,6 +50,15 @@ namespace ROS2
         // TODO: handle joints
 
         return m_generator.GetFbxString();
+    }
+
+    std::string UrdfToFbxConverter::ConvertAndSaveToFile(
+        const std::string & urdfString, const std::string & filePath)
+    {
+        const auto fbxContent = Convert(urdfString);
+        m_generator.SaveToFile(filePath);
+
+        return fbxContent;
     }
 
     void UrdfToFbxConverter::AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel)

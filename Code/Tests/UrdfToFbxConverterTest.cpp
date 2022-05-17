@@ -56,11 +56,13 @@ class UrdfToFbxConverterTest : public AllocatorsTestFixture
 TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithOneLink)
 {
     ROS2::UrdfToFbxConverter converter;
-    const auto xmlStr = GetUrdfWithOneLink();
-    const auto fbxStr = converter.ConvertUrdfToFbx(xmlStr);
+    const auto urdfStr = GetUrdfWithOneLink();
+
+    // Save generated FBX to file (it's then loaded by Asset Processor).
+    std::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/test.fbx";
+    const auto fbxStr = converter.ConvertAndSaveToFile(urdfStr, projectPath);
 
     PrintFbxContent(fbxStr);
-    // Add validation (implementation of converter is also not ready)
 }
 
 } // namespace
