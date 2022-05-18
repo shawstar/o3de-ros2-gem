@@ -13,12 +13,8 @@
 #include "Sensor/ROS2SensorComponent.h"
 
 #include <AzCore/Component/Component.h>
-#include <Atom/Feature/Utils/FrameCaptureBus.h>
 
-#include <AzFramework/Entity/EntityContext.h>
-
-#include <chrono>
-#include <optional>
+#include "CameraSensor.h"
 
 namespace ROS2
 {
@@ -35,41 +31,17 @@ namespace ROS2
         void Deactivate() override;
 
     private:
-
-        void InitializeSecondPipeline();
-        void DestroyPipeline();
+        float m_VerticalFieldOfViewDeg = 90.0f;
+        int m_width = 640;
+        int m_height = 480;
 
         void FrequencyTick() override;
 
         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> m_imagePublisher;
         AZStd::string m_cameraName = "dummy";
-        float m_VerticalFieldOfViewDeg = 90.0f;
-        int m_width = 640;
-        int m_height = 480;
+        CameraSensor m_cameraSensor;
 
         void OnCameraParamsChanged();
-
-        void InitializeView();
-
-
-        void ReadbackCallback(const AZ::RPI::AttachmentReadback::ReadbackResult& result);
-
         void ApplyParams();
-
-        AZStd::vector<AZStd::string> m_passHierarchy;
-        AZ::RPI::RenderPipelinePtr m_pipeline;
-        AZ::RPI::ViewPtr m_view;
-        AZ::RPI::ViewPtr m_targetView;
-        AZStd::function<void()> m_captureFinishedCallback;
-
-        AZ::RPI::Scene* m_scene = nullptr;
-
-        std::chrono::steady_clock::time_point m_startTime;
-        float SecondsSinceStart();
-
-        float m_aspectRatio = 1.0f;
-        float m_nearDist = 0.1f;
-        float m_farDist = 100.0f;
-
     };
 }  // namespace ROS2
