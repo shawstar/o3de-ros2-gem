@@ -40,8 +40,5 @@ namespace ROS2
         std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> m_imagePublisher;
         AZStd::string m_cameraName = "dummy";
         CameraSensor m_cameraSensor;
-
-        void OnCameraParamsChanged();
-        void ApplyParams();
     };
 }  // namespace ROS2

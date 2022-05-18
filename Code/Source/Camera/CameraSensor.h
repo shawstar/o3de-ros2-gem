@@ -21,16 +21,12 @@ namespace ROS2 {
 
     class CameraSensor {
     public:
-        void InitializeSecondPipeline(AZ::EntityId entityId);
+        void InitializeSecondPipeline();
         void DestroyPipeline();
         void RequestFrame(const AZ::Transform& cameraPose, std::function<void(const AZ::RPI::AttachmentReadback::ReadbackResult& result)> callback);
         void SetCameraDescription(const CameraSensorDescription& description);
 
     private:
-        void InitializeView();
-        float SecondsSinceStart();
-        std::chrono::steady_clock::time_point m_startTime;
-
         CameraSensorDescription m_cameraSensorDescription;
 
         AZStd::vector<AZStd::string> m_passHierarchy;

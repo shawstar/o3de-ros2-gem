@@ -26,6 +26,8 @@
 
 namespace ROS2 {
 
+    const char* const cameraSensorTracePrefix = "CameraSensor";
+
     AZ::Matrix4x4 CameraSensorDescription::MakeViewToClipMatrix() {
         m_aspectRatio = static_cast<float>(m_width)/static_cast<float>(m_height);
 
@@ -34,13 +36,11 @@ namespace ROS2 {
         return viewToClipMatrix;
     }
 
-    const char* const cameraSensorTracePrefix = "CameraSensor";
-
     void CameraSensor::SetCameraDescription(const CameraSensorDescription& description) {
         m_cameraSensorDescription = description;
     }
 
-    void CameraSensor::InitializeSecondPipeline(AZ::EntityId entityId) {
+    void CameraSensor::InitializeSecondPipeline() {
         AZ::Name viewName = AZ::Name("MainCamera");
         m_view = AZ::RPI::View::CreateView(viewName, AZ::RPI::View::UsageCamera);
         m_view->SetViewToClipMatrix(m_cameraSensorDescription.MakeViewToClipMatrix());
@@ -72,15 +72,12 @@ namespace ROS2 {
             // This will be set again to mimic the active camera in UpdateView
             fp->SetViewAlias(m_view, m_targetView);
         }
-
-        m_startTime = std::chrono::steady_clock::now();
     }
 
     void CameraSensor::DestroyPipeline()
     {
         if (auto* fp = m_scene->GetFeatureProcessor<AZ::Render::PostProcessFeatureProcessor>())
         {
-            // Remove view alias introduced in CreatePipeline and UpdateView
             fp->RemoveViewAlias(m_view);
         }
         m_scene->RemoveRenderPipeline(m_pipeline->GetId());
@@ -110,11 +107,5 @@ namespace ROS2 {
                 AZStd::string("Output"),
                 callback,
                 AZ::RPI::PassAttachmentReadbackOption::Output);
-    }
-
-    float CameraSensor::SecondsSinceStart() {
-        return static_cast<float>(
-                       std::chrono::duration_cast<std::chrono::milliseconds>(
-                               std::chrono::steady_clock::now() - m_startTime).count())/1000.0f;
     }
 }

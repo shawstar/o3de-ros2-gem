@@ -77,7 +77,7 @@ namespace ROS2
         cameraSensorDescription.cameraName = m_cameraName;
 
         m_cameraSensor.SetCameraDescription(cameraSensorDescription);
-        m_cameraSensor.InitializeSecondPipeline(GetEntityId());
+        m_cameraSensor.InitializeSecondPipeline();
     }
 
     void ROS2CameraSensorComponent::Deactivate()
