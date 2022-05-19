@@ -16,19 +16,38 @@ namespace ROS2
 {
     std::string UrdfToFbxConverter::Convert(const std::string & urdfString)
     {
+        std::cout << "\nTEST!!!\n";
         // 1. Parse URDF
         const auto urdf = UrdfParser::Parse(urdfString);
 
         // 2. Add materials to FBX
         AddMaterialsToFbxGenerator(urdf);
 
-        // 3. Add objects from URDF based structure to FBX generator
+        // 3. Add links from URDF based structure to FBX generator in Depth First order
         const auto root = urdf->getRoot();
+        const int numberOfLinks = urdf->links_.size();
+        std::vector<bool> visited(numberOfLinks, false);
+        std::stack<urdf::Link> stack;
+        stack.push(*root);
+        while(!stack.empty())
+        {
+            auto s = stack.top();
+            stack.pop();
 
-        // TODO: Add depth first search - now it works only for depth = 1
-        // while (const auto link = root; !link->child_links.empty())
-        // {
-        // }
+            std::cout << "\nVisited: " << s.name;
+
+            // if (!visited[])
+            for (const auto & child : s.child_links)
+            {
+                stack.push(*child);
+            }
+
+            // for (auto i = adj[s].begin(); i != adj[s].end(); ++i)
+            //     if (!visited[*i])
+            //         stack.push(*i);            
+
+        }
+
         // Get link from URDF and add to FBX
         const auto link = root; // TODO: just PoC
         const auto linkName = link->name;
