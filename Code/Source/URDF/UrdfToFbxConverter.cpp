@@ -16,7 +16,6 @@ namespace ROS2
 {
     std::string UrdfToFbxConverter::Convert(const std::string & urdfString)
     {
-        std::cout << "\nTEST!!!\n";
         // 1. Parse URDF
         const auto urdf = UrdfParser::Parse(urdfString);
 
@@ -25,48 +24,23 @@ namespace ROS2
 
         // 3. Add links from URDF based structure to FBX generator in Depth First order
         const auto root = urdf->getRoot();
-        const int numberOfLinks = urdf->links_.size();
-        std::vector<bool> visited(numberOfLinks, false);
+
         std::stack<urdf::Link> stack;
         stack.push(*root);
+
         while(!stack.empty())
         {
-            auto s = stack.top();
+            const auto link = stack.top();
             stack.pop();
 
-            std::cout << "\nVisited: " << s.name;
+            AddLinkToFbxGenerator(link);
 
-            // if (!visited[])
-            for (const auto & child : s.child_links)
+            // Add childs to stack
+            for (const auto & child : link.child_links)
             {
                 stack.push(*child);
             }
-
-            // for (auto i = adj[s].begin(); i != adj[s].end(); ++i)
-            //     if (!visited[*i])
-            //         stack.push(*i);            
-
         }
-
-        // Get link from URDF and add to FBX
-        const auto link = root; // TODO: just PoC
-        const auto linkName = link->name;
-        const auto linkGeometry = link->visual->geometry;
-        // TODO: handle different materials, link.visual.material
-
-        if (linkGeometry->type == urdf::Geometry::BOX)
-        {
-            auto boxGeometry = std::dynamic_pointer_cast<urdf::Box>(linkGeometry);
-            const double cubeSize = boxGeometry->dim.x; // TODO: Handle box in FBX instead of cube
-            const auto cubeId = m_generator.AddCubeObject(linkName, cubeSize, m_materialNamesToIds["black"]);
-            (void)cubeId;
-        }
-        else
-        {
-            AZ_Warning(__func__, false, "Only box geometry is supported.");
-        }
-
-        // TODO: handle joints
 
         return m_generator.GetFbxString();
     }
@@ -78,6 +52,32 @@ namespace ROS2
         m_generator.SaveToFile(filePath);
 
         return fbxContent;
+    }
+
+    void UrdfToFbxConverter::AddLinkToFbxGenerator(const urdf::Link & link)
+    {
+        const auto linkGeometry = link.visual->geometry;
+
+        if (linkGeometry->type == urdf::Geometry::BOX)
+        {
+            auto boxGeometry = std::dynamic_pointer_cast<urdf::Box>(linkGeometry);
+            const double cubeSize = boxGeometry->dim.x; // TODO: Handle box in FBX instead of cube
+            auto objectId = m_generator.AddCubeObject(link.name, cubeSize, m_materialNamesToIds[link.visual->material_name]);
+            m_objectNameToObjectId[link.name] = objectId;
+        }
+        else
+        {
+            AZ_Warning(__func__, false, "Only box geometry is supported.");
+        }
+
+        // Set proper relations between links (only root has no parent)
+        // TODO: handle joints tranformations
+        if (const auto & parent = link.getParent())
+        {
+            const auto parentId = m_objectNameToObjectId[parent->name];
+            const auto childId = m_objectNameToObjectId[link.name];
+            m_generator.SetRelationBetweenObjects(parentId, childId);
+        }
     }
 
     void UrdfToFbxConverter::AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel)

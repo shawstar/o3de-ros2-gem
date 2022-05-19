@@ -24,10 +24,12 @@ namespace ROS2
         std::string ConvertAndSaveToFile(const std::string & urdfString, const std::string & filePath);
 
     private:
+        void AddLinkToFbxGenerator(const urdf::Link & urdfLink);
         void AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel);
 
         Fbx::FbxGenerator m_generator;
         std::map <std::string, Id> m_materialNamesToIds;
+        std::map<std::string, Id> m_objectNameToObjectId;
     };
 
 } // namespace ROS2

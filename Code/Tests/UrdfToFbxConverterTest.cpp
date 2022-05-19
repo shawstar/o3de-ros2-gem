@@ -235,7 +235,7 @@ TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithTwoLinksAndJoint)
     std::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/two_links_one_joint.fbx";
     const auto fbxStr = converter.ConvertAndSaveToFile(urdfStr, projectPath);
 
-    // PrintFbxContent(fbxStr);
+    PrintFbxContent(fbxStr);
 }
 
 TEST_F(UrdfToFbxConverterTest, ConvertSimpleRobotUrdf)
@@ -243,7 +243,7 @@ TEST_F(UrdfToFbxConverterTest, ConvertSimpleRobotUrdf)
     const auto urdfStr = GetSimpleRobotUrdf();
     const auto fbxStr = converter.Convert(urdfStr);
 
-    // PrintFbxContent(fbxStr);
+    PrintFbxContent(fbxStr);
 }
 
 } // namespace
