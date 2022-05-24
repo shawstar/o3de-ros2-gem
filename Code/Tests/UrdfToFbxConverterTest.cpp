@@ -9,6 +9,7 @@
 #include <URDF/UrdfToFbxConverter.h>
 
 #include <AzCore/std/string/string.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzTest/AzTest.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
@@ -215,11 +216,12 @@ public:
 
 TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithOneLink)
 {
-    ROS2::UrdfToFbxConverter converter;
     const auto urdfStr = GetUrdfWithOneLink();
 
     // Save generated FBX to file (it's then loaded by Asset Processor).
     AZStd::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/one_link.fbx";
+
+    ROS2::UrdfToFbxConverter converter; 
     const auto fbxStr = converter.ConvertAndSaveToFile(urdfStr, projectPath);
 
     PrintFbxContent(fbxStr);
@@ -231,6 +233,8 @@ TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithTwoLinksAndJoint)
 
     // Save generated FBX to file (it's then loaded by Asset Processor).
     AZStd::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/two_links_one_joint.fbx";
+
+    ROS2::UrdfToFbxConverter converter; 
     const auto fbxStr = converter.ConvertAndSaveToFile(urdfStr, projectPath);
 
     PrintFbxContent(fbxStr);
@@ -239,9 +243,11 @@ TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithTwoLinksAndJoint)
 TEST_F(UrdfToFbxConverterTest, ConvertSimpleRobotUrdf)
 {
     const auto urdfStr = GetSimpleRobotUrdf();
+
+    ROS2::UrdfToFbxConverter converter; 
     const auto fbxStr = converter.Convert(urdfStr);
 
     PrintFbxContent(fbxStr);
 }
 
-} // namespace
+} // namespace UnitTest

@@ -11,6 +11,8 @@
 #include <AzCore/std/string/string.h>
 
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/map.h>
+#include <AzCore/Memory/SystemAllocator.h>
 
 #include "FbxGenerator.h"
 #include "UrdfParser.h"
@@ -21,6 +23,8 @@ namespace ROS2
     class UrdfToFbxConverter
     {
     public:
+        AZ_CLASS_ALLOCATOR(UrdfToFbxConverter, AZ::SystemAllocator, 0);
+
         AZStd::string Convert(const AZStd::string & urdfString);
 
         AZStd::string ConvertAndSaveToFile(const AZStd::string & urdfString, const AZStd::string & filePath);
@@ -30,8 +34,8 @@ namespace ROS2
         void AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel);
 
         Fbx::FbxGenerator m_generator;
-        std::map<AZStd::string, Id> m_materialNamesToIds;
-        std::map<AZStd::string, Id> m_objectNameToObjectId;
+        AZStd::map<AZStd::string, Id> m_materialNamesToIds;
+        AZStd::map<AZStd::string, Id> m_objectNameToObjectId;
     };
 
 } // namespace ROS2
