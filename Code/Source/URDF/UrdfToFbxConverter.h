@@ -10,6 +10,8 @@
 
 #include <AzCore/std/string/string.h>
 
+#include <AzCore/std/string/string.h>
+
 #include "FbxGenerator.h"
 #include "UrdfParser.h"
 
@@ -19,17 +21,17 @@ namespace ROS2
     class UrdfToFbxConverter
     {
     public:
-        std::string Convert(const std::string & urdfString);
+        AZStd::string Convert(const AZStd::string & urdfString);
 
-        std::string ConvertAndSaveToFile(const std::string & urdfString, const std::string & filePath);
+        AZStd::string ConvertAndSaveToFile(const AZStd::string & urdfString, const AZStd::string & filePath);
 
     private:
         void AddLinkToFbxGenerator(const urdf::Link & urdfLink);
         void AddMaterialsToFbxGenerator(const urdf::ModelInterfaceSharedPtr & urdfModel);
 
         Fbx::FbxGenerator m_generator;
-        std::map <std::string, Id> m_materialNamesToIds;
-        std::map<std::string, Id> m_objectNameToObjectId;
+        std::map<AZStd::string, Id> m_materialNamesToIds;
+        std::map<AZStd::string, Id> m_objectNameToObjectId;
     };
 
 } // namespace ROS2

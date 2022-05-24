@@ -9,15 +9,14 @@
 #include "UrdfToFbxConverter.h"
 
 #include <AzCore/std/string/string.h>
-
 #include <AzCore/Console/Console.h>
 
 namespace ROS2
 {
-    std::string UrdfToFbxConverter::Convert(const std::string & urdfString)
+    AZStd::string UrdfToFbxConverter::Convert(const AZStd::string & urdfString)
     {
         // 1. Parse URDF
-        const auto urdf = UrdfParser::Parse(urdfString);
+        const auto urdf = UrdfParser::Parse(urdfString.data());
 
         // 2. Add materials to FBX
         AddMaterialsToFbxGenerator(urdf);
@@ -42,14 +41,14 @@ namespace ROS2
             }
         }
 
-        return m_generator.GetFbxString();
+        return m_generator.GetFbxString().data();
     }
 
-    std::string UrdfToFbxConverter::ConvertAndSaveToFile(
-        const std::string & urdfString, const std::string & filePath)
+    AZStd::string UrdfToFbxConverter::ConvertAndSaveToFile(
+        const AZStd::string & urdfString, const AZStd::string & filePath)
     {
         const auto fbxContent = Convert(urdfString);
-        m_generator.SaveToFile(filePath);
+        m_generator.SaveToFile(filePath.data());
 
         return fbxContent;
     }
@@ -62,8 +61,9 @@ namespace ROS2
         {
             auto boxGeometry = std::dynamic_pointer_cast<urdf::Box>(linkGeometry);
             const double cubeSize = boxGeometry->dim.x; // TODO: Handle box in FBX instead of cube
-            auto objectId = m_generator.AddCubeObject(link.name, cubeSize, m_materialNamesToIds[link.visual->material_name]);
-            m_objectNameToObjectId[link.name] = objectId;
+            AZStd::string materialName(link.visual->material_name.c_str());
+            auto objectId = m_generator.AddCubeObject(link.name.c_str(), cubeSize, m_materialNamesToIds[materialName]);
+            m_objectNameToObjectId[link.name.c_str()] = objectId;
         }
         else
         {
@@ -74,8 +74,8 @@ namespace ROS2
         // TODO: handle joints tranformations
         if (const auto & parent = link.getParent())
         {
-            const auto parentId = m_objectNameToObjectId[parent->name];
-            const auto childId = m_objectNameToObjectId[link.name];
+            const auto parentId = m_objectNameToObjectId[parent->name.c_str()];
+            const auto childId = m_objectNameToObjectId[link.name.c_str()];
             m_generator.SetRelationBetweenObjects(parentId, childId);
         }
     }
@@ -91,7 +91,7 @@ namespace ROS2
         for (const auto & e : urdfModel->materials_)
         {
             const auto material = e.second;
-            const std::string & materialName = material->name;
+            const AZStd::string materialName(material->name.c_str());
             const auto materialColor = material->color;
             const Fbx::Color fbxColor(materialColor.r, materialColor.g, materialColor.b);
             const auto materialId = m_generator.AddMaterial(materialName, fbxColor);

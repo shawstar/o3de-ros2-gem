@@ -8,6 +8,7 @@
 
 #include <URDF/UrdfToFbxConverter.h>
 
+#include <AzCore/std/string/string.h>
 #include <AzTest/AzTest.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
@@ -17,9 +18,9 @@ namespace UnitTest
 class UrdfToFbxConverterTest : public AllocatorsTestFixture
 {
 public:
-    std::string GetUrdfWithOneLink()
+    AZStd::string GetUrdfWithOneLink()
     {
-        std::string xmlStr =
+        return
             "<robot name=\"test_one_link\">"
             "  <material name=\"black\">"
             "    <color rgba=\"0.0 0.0 0.0 1.0\"/>"
@@ -42,12 +43,11 @@ public:
             "    </collision>"
             "  </link>"
             "</robot>";
-        return xmlStr;
     }
 
-    std::string GetUrdfWithTwoLinksAndOneJoint()
+    AZStd::string GetUrdfWithTwoLinksAndOneJoint()
     {
-        std::string xmlStr =
+        return
             "<robot name=\"test_one_link\">"
             "  <material name=\"black\">"
             "    <color rgba=\"0.0 0.0 0.0 1.0\"/>"
@@ -96,12 +96,11 @@ public:
             "    <axis xyz=\"0 0 1\"/>"
             "  </joint>"
             "</robot>";
-        return xmlStr;
     }
 
-    std::string GetSimpleRobotUrdf()
+    AZStd::string GetSimpleRobotUrdf()
     {
-        std::string xmlStr =
+        return
             "<robot name=\"simple_robot\">"
             "  <material name=\"black\">"
             "    <color rgba=\"0.0 0.0 0.0 1.0\"/>"
@@ -203,14 +202,13 @@ public:
             "    <axis xyz=\"0 0 1\"/>"
             "  </joint>"
             "</robot>";
-        return xmlStr;
     }
 
-    void PrintFbxContent(const std::string & str)
+    void PrintFbxContent(const AZStd::string & str)
     {
         std::cout << __func__ << " fbx data:"
             << "\n---------------\n"
-            << str
+            << str.data()
             << "\n---------------\n";
     }
 };
@@ -221,7 +219,7 @@ TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithOneLink)
     const auto urdfStr = GetUrdfWithOneLink();
 
     // Save generated FBX to file (it's then loaded by Asset Processor).
-    std::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/one_link.fbx";
+    AZStd::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/one_link.fbx";
     const auto fbxStr = converter.ConvertAndSaveToFile(urdfStr, projectPath);
 
     PrintFbxContent(fbxStr);
@@ -232,7 +230,7 @@ TEST_F(UrdfToFbxConverterTest, ConvertUrdfWithTwoLinksAndJoint)
     const auto urdfStr = GetUrdfWithTwoLinksAndOneJoint();
 
     // Save generated FBX to file (it's then loaded by Asset Processor).
-    std::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/two_links_one_joint.fbx";
+    AZStd::string projectPath = "/home/mdrwiega/o3de/Ros2WarehouseDemo/two_links_one_joint.fbx";
     const auto fbxStr = converter.ConvertAndSaveToFile(urdfStr, projectPath);
 
     PrintFbxContent(fbxStr);
