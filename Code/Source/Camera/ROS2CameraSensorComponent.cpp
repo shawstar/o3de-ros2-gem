@@ -89,6 +89,7 @@ namespace ROS2
     void ROS2CameraSensorComponent::FrequencyTick()
     {
         AZ::Transform transform = GetEntity()->GetTransform()->GetWorldTM();
+        AZ_TracePrintf(ROS2CameraSensorComponentTracePrefix, "Tick %s", m_cameraName.c_str());
         m_cameraSensor.RequestFrame(transform, [this](const AZ::RPI::AttachmentReadback::ReadbackResult& result) {
             const AZ::RHI::ImageDescriptor& descriptor = result.m_imageDescriptor;
             AZ_TracePrintf(ROS2CameraSensorComponentTracePrefix, "New image %u x %u %s",

@@ -5,24 +5,16 @@
 #include <Atom/RPI.Public/RPISystemInterface.h>
 #include <Atom/RPI.Public/Scene.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
-
-#include <AzFramework/Windowing/WindowBus.h>
-#include <AzFramework/Windowing/NativeWindow.h>
-#include <Atom/RHI/RHISystemInterface.h>
-
 #include <Atom/RPI.Public/Base.h>
-#include <Atom/RPI.Public/WindowContext.h>
-
-#include <Atom/Component/DebugCamera/CameraComponent.h>
-#include <Atom/Component/DebugCamera/NoClipControllerComponent.h>
 
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Scene/SceneSystemInterface.h>
 
-#include <Atom/RPI.Public/AuxGeom/AuxGeomFeatureProcessorInterface.h>
 #include <Atom/RPI.Public/Pass/Specific/RenderToTexturePass.h>
 
 #include <PostProcess/PostProcessFeatureProcessor.h>
+
+#include <Camera/CameraCaptureWrapper.h>
 
 namespace ROS2 {
 
@@ -41,6 +33,7 @@ namespace ROS2 {
     }
 
     void CameraSensor::InitializeSecondPipeline() {
+        AZ_TracePrintf(cameraSensorTracePrefix, "Initializing pipeline for %s", m_cameraSensorDescription.cameraName.c_str());
         AZ::Name viewName = AZ::Name("MainCamera");
         m_view = AZ::RPI::View::CreateView(viewName, AZ::RPI::View::UsageCamera);
         m_view->SetViewToClipMatrix(m_cameraSensorDescription.MakeViewToClipMatrix());
@@ -49,9 +42,9 @@ namespace ROS2 {
         AZStd::string pipelineName = m_cameraSensorDescription.cameraName + "Pipeline";
 
         AZ::RPI::RenderPipelineDescriptor pipelineDesc;
-        pipelineDesc.m_mainViewTagName = "MainCamera";          //Surface shaders render to the "MainCamera" tag
-        pipelineDesc.m_name = pipelineName;                 //Sets the debug name for this pipeline
-        pipelineDesc.m_rootPassTemplate = "MainPipelineRenderToTexture";    //References a template in AtomSampleViewer\Passes\PassTemplates.azasset
+        pipelineDesc.m_mainViewTagName = "MainCamera";
+        pipelineDesc.m_name = pipelineName;
+        pipelineDesc.m_rootPassTemplate = "MainPipelineRenderToTexture";
         pipelineDesc.m_renderSettings.m_multisampleState.m_samples = 4;
         m_pipeline = AZ::RPI::RenderPipeline::CreateRenderPipeline(pipelineDesc);
         m_pipeline->RemoveFromRenderTick();
@@ -68,15 +61,12 @@ namespace ROS2 {
 
         m_pipeline->SetDefaultView(m_view);
         m_targetView = m_scene->GetDefaultRenderPipeline()->GetDefaultView();
-        if (auto* fp = m_scene->GetFeatureProcessor<AZ::Render::PostProcessFeatureProcessor>())
-        {
-            // This will be set again to mimic the active camera in UpdateView
+        if (auto* fp = m_scene->GetFeatureProcessor<AZ::Render::PostProcessFeatureProcessor>()) {
             fp->SetViewAlias(m_view, m_targetView);
         }
     }
 
-    void CameraSensor::DestroyPipeline()
-    {
+    void CameraSensor::DestroyPipeline() {
         if (auto* fp = m_scene->GetFeatureProcessor<AZ::Render::PostProcessFeatureProcessor>())
         {
             fp->RemoveViewAlias(m_view);
@@ -89,26 +79,11 @@ namespace ROS2 {
     }
 
     void CameraSensor::RequestFrame(const AZ::Transform& cameraPose, std::function<void(const AZ::RPI::AttachmentReadback::ReadbackResult& result)> callback) {
-
-        AZ::Vector3 eulerAngles = AZ::ConvertTransformToEulerDegrees(cameraPose);
-        AZ::Vector3 translation = cameraPose.GetTranslation();
-
-        AZ_TracePrintf(cameraSensorTracePrefix, "Translation: %f, %f, %f, euler: %f, %f, %f",
-                       translation.GetX(), translation.GetY(), translation.GetZ(),
-                       eulerAngles.GetX(), eulerAngles.GetY(), eulerAngles.GetZ());
-
         AZ::Transform inverse = cameraPose.GetInverse();
 
         m_view->SetWorldToViewMatrix(AZ::Matrix4x4::CreateFromQuaternionAndTranslation(inverse.GetRotation(),
                                                                                        inverse.GetTranslation()));
 
-        m_pipeline->AddToRenderTickOnce();
-
-        AZ::Render::FrameCaptureRequestBus::Broadcast(
-                &AZ::Render::FrameCaptureRequestBus::Events::CapturePassAttachmentWithCallback,
-                m_passHierarchy,
-                AZStd::string("Output"),
-                callback,
-                AZ::RPI::PassAttachmentReadbackOption::Output);
+        CameraCaptureWrapper::Get().RequestFrame(m_passHierarchy, std::move(callback), m_pipeline);
     }
 }
