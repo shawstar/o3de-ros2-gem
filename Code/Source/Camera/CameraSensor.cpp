@@ -54,6 +54,7 @@ namespace ROS2 {
         pipelineDesc.m_rootPassTemplate = "MainPipelineRenderToTexture";    //References a template in AtomSampleViewer\Passes\PassTemplates.azasset
         pipelineDesc.m_renderSettings.m_multisampleState.m_samples = 4;
         m_pipeline = AZ::RPI::RenderPipeline::CreateRenderPipeline(pipelineDesc);
+        m_pipeline->RemoveFromRenderTick();
 
         if (auto renderToTexturePass = azrtti_cast<AZ::RPI::RenderToTexturePass*>(m_pipeline->GetRootPass().get()))
         {
@@ -100,6 +101,8 @@ namespace ROS2 {
 
         m_view->SetWorldToViewMatrix(AZ::Matrix4x4::CreateFromQuaternionAndTranslation(inverse.GetRotation(),
                                                                                        inverse.GetTranslation()));
+
+        m_pipeline->AddToRenderTickOnce();
 
         AZ::Render::FrameCaptureRequestBus::Broadcast(
                 &AZ::Render::FrameCaptureRequestBus::Events::CapturePassAttachmentWithCallback,
